@@ -78,6 +78,18 @@ keytab: "/path/to/client.keytab"
 ktuser: "username"
 
 #------------------------------------------------------------------------------
+# Log level: debug, info, warn (default), error
+# can be overwritten by command line parameter
+#------------------------------------------------------------------------------
+log_level: "warn"
+
+#------------------------------------------------------------------------------
+# Log target: stderr (default), stdout, file, syslog
+#------------------------------------------------------------------------------
+log_target: "stderr"
+# log_file: "/var/log/mokey.log"
+
+#------------------------------------------------------------------------------
 # Enable rate limiting based on remote ip (requires redis)
 #------------------------------------------------------------------------------
 rate_limit: false

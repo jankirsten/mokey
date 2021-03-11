@@ -7,13 +7,18 @@ package main
 import (
 	"errors"
 	"fmt"
+	"log/syslog"
+	"os"
 
 	log "github.com/sirupsen/logrus"
+	syslogHook "github.com/sirupsen/logrus/hooks/syslog"
 	"github.com/spf13/viper"
 	"github.com/ubccr/mokey/server"
 	"github.com/ubccr/mokey/tools"
 	"github.com/urfave/cli"
 )
+
+var logFile *os.File
 
 func init() {
 	viper.SetConfigName("mokey")
@@ -32,12 +37,6 @@ func main() {
 		&cli.BoolFlag{Name: "debug,d", Usage: "Print debug messages"},
 	}
 	app.Before = func(c *cli.Context) error {
-		if c.GlobalBool("debug") {
-			log.SetLevel(log.InfoLevel)
-		} else {
-			log.SetLevel(log.WarnLevel)
-		}
-
 		conf := c.GlobalString("conf")
 		if len(conf) > 0 {
 			viper.SetConfigFile(conf)
@@ -48,10 +47,67 @@ func main() {
 			return fmt.Errorf("Failed reading config file - %s", err)
 		}
 
+		if c.GlobalBool("debug") {
+			log.SetLevel(log.DebugLevel)
+		} else {
+			switch viper.GetString("log_level") {
+			case "error":
+				log.SetLevel(log.ErrorLevel)
+			case "warn":
+				log.SetLevel(log.WarnLevel)
+			case "info":
+				log.SetLevel(log.InfoLevel)
+			case "debug":
+				log.SetLevel(log.DebugLevel)
+			default:
+				log.SetLevel(log.WarnLevel)
+			}
+		}
+
+		switch viper.GetString("log_target") {
+		case "stderr":
+			log.SetOutput(os.Stderr)
+
+		case "stdout":
+			log.SetOutput(os.Stdout)
+
+		case "file":
+			if len(viper.GetString("log_file")) == 0 {
+				return errors.New("Please specify a log file")
+			}
+
+			logFile, err = os.OpenFile(viper.GetString("log_file"), os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0660)
+
+			if err == nil {
+				log.SetOutput(logFile)
+			} else {
+				return errors.New("Failed to open log file")
+			}
+
+		case "syslog":
+			hook, err := syslogHook.NewSyslogHook("", "", syslog.LOG_INFO, "")
+
+			if err != nil {
+				return errors.New("Failed to setup syslog output")
+			}
+			log.AddHook(hook)
+
+		default:
+			log.SetOutput(os.Stderr)
+		}
+
+		// logging now setup properly
+
 		if !viper.IsSet("enc_key") || !viper.IsSet("auth_key") {
 			log.Fatal("Please ensure authentication and encryption keys are set")
 		}
 
+		return nil
+	}
+	app.After = func(c *cli.Context) error {
+		if logFile != nil {
+			return logFile.Close()
+		}
 		return nil
 	}
 	app.Commands = []cli.Command{

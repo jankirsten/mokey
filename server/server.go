@@ -71,6 +71,10 @@ func HTTPErrorHandler(err error, c echo.Context) {
 func Run() error {
 	e := echo.New()
 
+	// set logging targets for echo
+	e.Logger.SetOutput(log.StandardLogger().Out)
+	e.StdLogger.SetOutput(log.StandardLogger().Out)
+
 	tmplDir := util.GetTemplateDir()
 	log.Infof("Using template dir: %s", tmplDir)
 

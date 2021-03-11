@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"log/syslog"
 	"os"
+	"os/signal"
+	"syscall"
 
 	log "github.com/sirupsen/logrus"
 	syslogHook "github.com/sirupsen/logrus/hooks/syslog"
@@ -83,6 +85,26 @@ func main() {
 			} else {
 				return errors.New("Failed to open log file")
 			}
+
+			// reload log file when receiving SIGHUP
+			go func() {
+				c := make(chan os.Signal, 1)
+				signal.Notify(c, syscall.SIGHUP)
+
+				for {
+					_ = <-c
+					var err error
+					_ = logFile.Close()
+					logFile, err = os.OpenFile(viper.GetString("log_file"), os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0660)
+
+					if err != nil {
+						panic("Failed to reload log file")
+					} else {
+						log.SetOutput(logFile)
+						log.Info("Log file successfully reloaded")
+					}
+				}
+			}()
 
 		case "syslog":
 			hook, err := syslogHook.NewSyslogHook("", "", syslog.LOG_INFO, "")

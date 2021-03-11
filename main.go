@@ -118,6 +118,12 @@ func main() {
 			log.SetOutput(os.Stderr)
 		}
 
+		if viper.GetString("log_format") == "json" {
+			log.SetFormatter(&log.JSONFormatter{})
+		} else {
+			// Text formatter is created by default
+		}
+
 		// logging now setup properly
 
 		if !viper.IsSet("enc_key") || !viper.IsSet("auth_key") {

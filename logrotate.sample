@@ -1,0 +1,13 @@
+/var/log/mokey/mokey.log {
+    create
+    weekly
+    nomissingok
+    ifempty
+    sharedscripts
+    rotate 3
+    compress
+    delaycompress
+    postrotate
+        /bin/killall -HUP mokey 2> /dev/null || true
+    endscript
+}
